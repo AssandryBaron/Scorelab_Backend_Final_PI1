@@ -58,8 +58,13 @@ public class TorneoService {
     }
 
     private TorneoResponse convertirAResponse(Torneo torneo) {
-        // Consulta directa a la BD filtrando por Torneo ID y estado APROBADO
-        long contadorReal = equipoRepository.countByTorneoIdAndEstado(torneo.getId(), "APROBADO");
+        /**
+         * CAMBIO CLAVE:
+         * Cambiamos 'countByTorneoIdAndEstado' por 'countByTorneoId'.
+         * Esto permite que el organizador vea cuántos equipos se han postulado
+         * aunque todavía no los haya aprobado.
+         */
+        long contadorReal = equipoRepository.countByTorneoId(torneo.getId());
 
         return TorneoResponse.builder()
                 .id(torneo.getId())

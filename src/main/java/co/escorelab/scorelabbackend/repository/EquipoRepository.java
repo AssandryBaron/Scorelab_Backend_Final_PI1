@@ -8,10 +8,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface EquipoRepository extends JpaRepository<Equipo, Long> {
 
     // Para validar que no existan dos equipos con el mismo nombre
@@ -24,8 +26,30 @@ public interface EquipoRepository extends JpaRepository<Equipo, Long> {
     List<Equipo> findByEstado(String estado);
 
     /**
-     * 🌟 MÉTODO CLAVE: Fuerza la vinculación del equipo con el torneo en la BD.
-     * Esto asegura que el campo torneo_id deje de ser NULL.
+     * 🌟 MÉTODO CLAVE PARA GESTIÓN DE PARTIDOS
+     * Permite obtener la lista física de equipos vinculados a un torneo.
+     * Este es el que utiliza el método listarEquiposPorTorneo en el Service.
+     */
+    List<Equipo> findByTorneo(Torneo torneo);
+
+    /**
+     * Alternativa si prefieres buscar directamente por el ID del torneo
+     */
+    List<Equipo> findByTorneoId(Long torneoId);
+
+    /**
+     * MÉTODO PARA EL CONTADOR
+     * Cuenta todos los equipos asociados a un ID de torneo.
+     */
+    long countByTorneoId(Long torneoId);
+
+    /**
+     * Mantiene la compatibilidad para contar solo aprobados.
+     */
+    long countByTorneoIdAndEstado(Long torneoId, String estado);
+
+    /**
+     * Fuerza la vinculación del equipo con el torneo en la BD.
      */
     @Modifying
     @Transactional
@@ -35,7 +59,4 @@ public interface EquipoRepository extends JpaRepository<Equipo, Long> {
             @Param("torneo") Torneo torneo,
             @Param("estado") String estado
     );
-
-    // En EquipoRepository.java
-    long countByTorneoIdAndEstado(Long torneoId, String estado);
 }

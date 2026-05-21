@@ -20,28 +20,23 @@ public class JugadorService {
     private final EquipoRepository equipoRepository;
 
     /**
-     * Registra un solo jugador validando permisos y unicidad.
+     * ✅ NUEVO: Lista todos los jugadores de la base de datos.
+     * Utilizado por el Organizador para la "Base de Jugadores".
      */
+    public List<Jugador> listarTodosLosJugadores() {
+        return jugadorRepository.findAll();
+    }
+
     @Transactional
     public Jugador registrarJugador(Long equipoId, JugadorRequest request, String correoDelegado) {
         Equipo equipo = equipoRepository.findById(equipoId)
                 .orElseThrow(() -> new RuntimeException("Equipo no encontrado"));
 
-        // 1. Validar que el usuario logueado sea el dueño del equipo
-        if (!equipo.getDelegado().getCorreo().equals(correoDelegado)) {
-            throw new RuntimeException("No tienes permisos para gestionar este equipo");
-        }
+        // Validar propiedad del equipo
+        validarAcceso(equipo, correoDelegado);
 
-        // 2. Validar documento único global
-        if (jugadorRepository.findByDocumento(request.getDocumento()).isPresent()) {
-            throw new RuntimeException("Ya existe un jugador con el documento: " + request.getDocumento());
-        }
-
-        // 3. Validar dorsal único en el equipo
-        if (request.getNumeroCamiseta() != null &&
-                jugadorRepository.existsByEquipoAndNumeroCamiseta(equipo, request.getNumeroCamiseta())) {
-            throw new RuntimeException("El número " + request.getNumeroCamiseta() + " ya está ocupado en este equipo");
-        }
+        // Validar reglas de negocio (DNI y Dorsal)
+        validarReglasJugador(equipo, request);
 
         Jugador nuevoJugador = Jugador.builder()
                 .nombre(request.getNombre())
@@ -54,32 +49,54 @@ public class JugadorService {
         return jugadorRepository.save(nuevoJugador);
     }
 
-    /**
-     * 🌟 NUEVO: Registra una lista de jugadores en lote.
-     * Si uno falla, todos se revierten (Rollback).
-     */
     @Transactional
     public List<Jugador> registrarJugadoresLote(Long equipoId, List<JugadorRequest> requests, String correoDelegado) {
-        // Validamos el equipo una sola vez al inicio para ahorrar recursos
         Equipo equipo = equipoRepository.findById(equipoId)
                 .orElseThrow(() -> new RuntimeException("Equipo no encontrado"));
 
-        if (!equipo.getDelegado().getCorreo().equals(correoDelegado)) {
-            throw new RuntimeException("No tienes permisos para gestionar este equipo");
-        }
+        validarAcceso(equipo, correoDelegado);
 
-        // Procesamos la lista usando el método individual para reutilizar las validaciones
+        // Procesar cada jugador del lote
         return requests.stream()
-                .map(request -> registrarJugador(equipoId, request, correoDelegado))
+                .map(request -> {
+                    validarReglasJugador(equipo, request);
+                    return Jugador.builder()
+                            .nombre(request.getNombre())
+                            .documento(request.getDocumento())
+                            .posicion(request.getPosicion())
+                            .numeroCamiseta(request.getNumeroCamiseta())
+                            .equipo(equipo)
+                            .build();
+                })
+                .map(jugadorRepository::save)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Lista los jugadores pertenecientes a un equipo específico.
-     */
     public List<Jugador> listarJugadoresPorEquipo(Long equipoId) {
-        Equipo equipo = equipoRepository.findById(equipoId)
-                .orElseThrow(() -> new RuntimeException("Equipo no encontrado"));
-        return jugadorRepository.findByEquipo(equipo);
+        if (!equipoRepository.existsById(equipoId)) {
+            throw new RuntimeException("El equipo solicitado no existe");
+        }
+        return jugadorRepository.findByEquipoId(equipoId);
+    }
+
+    // --- MÉTODOS DE APOYO ---
+
+    private void validarAcceso(Equipo equipo, String correoDelegado) {
+        if (!equipo.getDelegado().getCorreo().equals(correoDelegado)) {
+            throw new RuntimeException("No tienes permisos para gestionar este equipo");
+        }
+    }
+
+    private void validarReglasJugador(Equipo equipo, JugadorRequest request) {
+        // 1. Validar Documento Duplicado (Global)
+        if (jugadorRepository.findByDocumento(request.getDocumento()).isPresent()) {
+            throw new RuntimeException("⚠ La cédula '" + request.getDocumento() + "' ya pertenece a un jugador registrado.");
+        }
+
+        // 2. Validar Dorsal Duplicado (Solo en este equipo)
+        if (request.getNumeroCamiseta() != null &&
+                jugadorRepository.existsByEquipoAndNumeroCamiseta(equipo, request.getNumeroCamiseta())) {
+            throw new RuntimeException("⚠ El dorsal #" + request.getNumeroCamiseta() + " ya está ocupado en el equipo " + equipo.getNombre());
+        }
     }
 }

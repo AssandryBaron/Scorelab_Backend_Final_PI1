@@ -15,11 +15,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/torneos")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*") // Permite que el frontend se conecte sin bloqueos de CORS
 public class TorneoController {
 
     private final TorneoService torneoService;
 
-    // 🔒 Protegido: Crear torneo
+    // POST /api/torneos -> Solo Organizador
     @PostMapping
     public ResponseEntity<ApiResponse<TorneoResponse>> crearTorneo(
             @Valid @RequestBody TorneoRequest request,
@@ -30,7 +31,7 @@ public class TorneoController {
         return ResponseEntity.ok(ApiResponse.ok("¡Torneo creado exitosamente!", response));
     }
 
-    // 🔒 Protegido: Ver solo MIS torneos
+    // GET /api/torneos/mis-torneos -> Solo Organizador
     @GetMapping("/mis-torneos")
     public ResponseEntity<ApiResponse<List<TorneoResponse>>> listarMisTorneos(Principal principal) {
         String correoUsuario = principal.getName();
@@ -38,8 +39,12 @@ public class TorneoController {
         return ResponseEntity.ok(ApiResponse.ok("Tus torneos cargados con éxito", torneos));
     }
 
-    // 🔓 Público: Ver TODOS los torneos del sistema
-    @GetMapping("/todos")
+    /**
+     * CORRECCIÓN AQUÍ:
+     * Quitamos "/todos" para que la ruta sea simplemente GET /api/torneos
+     * que es lo que tu Frontend está buscando.
+     */
+    @GetMapping
     public ResponseEntity<ApiResponse<List<TorneoResponse>>> listarTodosLosTorneos() {
         List<TorneoResponse> torneos = torneoService.listarTodosLosTorneos();
         return ResponseEntity.ok(ApiResponse.ok("Lista de torneos obtenida", torneos));

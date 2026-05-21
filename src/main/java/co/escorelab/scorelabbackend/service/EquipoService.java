@@ -24,19 +24,38 @@ public class EquipoService {
     private final UsuarioRepository usuarioRepository;
     private final TorneoRepository torneoRepository;
 
+    /**
+     * 🌟 NUEVO MÉTODO: Listar equipos por Torneo
+     * Este método es el que llama el EquipoController para llenar los selects en el frontend.
+     */
+    public List<EquipoResponse> listarEquiposPorTorneo(Long torneoId) {
+        // Buscamos el torneo para asegurar que existe
+        Torneo torneo = torneoRepository.findById(torneoId)
+                .orElseThrow(() -> new RuntimeException("Torneo no encontrado con ID: " + torneoId));
+
+        // Buscamos los equipos vinculados a ese torneo
+        return equipoRepository.findByTorneo(torneo).stream()
+                .map(this::convertirAResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Crea un equipo vinculándolo al torneo seleccionado
+     */
+    @Transactional
     public EquipoResponse crearEquipo(EquipoRequest request, String correoUsuario) {
         Usuario delegado = usuarioRepository.findByCorreo(correoUsuario)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con correo: " + correoUsuario));
 
-        if (equipoRepository.findByNombre(request.getNombre()).isPresent()) {
-            throw new RuntimeException("Ya existe un equipo registrado con ese nombre");
-        }
+        Torneo torneo = torneoRepository.findById(request.getTorneoId())
+                .orElseThrow(() -> new RuntimeException("El Torneo seleccionado (ID: " + request.getTorneoId() + ") no existe"));
 
         Equipo nuevoEquipo = Equipo.builder()
                 .nombre(request.getNombre())
                 .ciudad(request.getCiudad())
                 .fechaCreacion(LocalDate.now())
                 .delegado(delegado)
+                .torneo(torneo)
                 .estado("PENDIENTE")
                 .build();
 
@@ -63,23 +82,8 @@ public class EquipoService {
         Equipo equipo = equipoRepository.findById(equipoId)
                 .orElseThrow(() -> new RuntimeException("Equipo no encontrado"));
 
-        if ("APROBADO".equalsIgnoreCase(nuevoEstado)) {
-            Torneo torneo = torneoRepository.findAll().stream()
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("No hay torneos"));
-
-            // 1. Vinculación en BD
-            equipoRepository.vincularATorneoYAprobar(equipoId, torneo, "APROBADO");
-
-            // 2. 🌟 ESTO ES LO NUEVO: Actualizamos el objeto en memoria para el contador
-            torneo.agregarEquipo(equipo);
-            torneoRepository.save(torneo);
-
-            System.out.println("✅ ¡Contador actualizado en memoria!");
-        } else {
-            equipo.setEstado(nuevoEstado);
-            equipoRepository.save(equipo);
-        }
+        equipo.setEstado(nuevoEstado.toUpperCase());
+        equipoRepository.save(equipo);
     }
 
     private EquipoResponse convertirAResponse(Equipo equipo) {
@@ -88,7 +92,7 @@ public class EquipoService {
                 .nombre(equipo.getNombre())
                 .ciudad(equipo.getCiudad())
                 .fechaCreacion(equipo.getFechaCreacion())
-                .nombreDelegado(equipo.getDelegado().getNombre())
+                .nombreDelegado(equipo.getDelegado() != null ? equipo.getDelegado().getNombre() : "N/A")
                 .estado(equipo.getEstado())
                 .nombreTorneo(equipo.getTorneo() != null ? equipo.getTorneo().getNombre() : "Sin Torneo")
                 .build();
