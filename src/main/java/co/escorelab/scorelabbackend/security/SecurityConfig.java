@@ -44,10 +44,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
 
                         // 📊 MÓDULO DE ESTADÍSTICAS (TABLA DE POSICIONES Y GOLEADORES):
-                        // Cambiado a .permitAll() para que el Frontend pueda consumir las tablas libremente sin error 403
                         .requestMatchers(HttpMethod.GET, "/api/estadisticas/**").permitAll()
 
-                        // 🛡️ GESTIÓN DE PARTIDOS Y MINUTO A MINUTO (Solo Organizador puede EDITAR/CREAR)
+                        // 🛡️ GESTIÓN DE PARTIDOS Y MINUTO A MINUTO (Ajustado para Delegados)
+                        // 🟢 LECTURA: Permite que Organizadores y Delegados logueados vean el fixture en vivo
+                        .requestMatchers(HttpMethod.GET, "/api/partidos/**").authenticated()
+
+                        // 🔴 ESCRITURA/ELIMINACIÓN: Mantiene el candado estricto para que solo el Organizador programe o finalice
                         .requestMatchers("/api/partidos/**").hasAnyAuthority("ORGANIZADOR", "ROLE_ORGANIZADOR")
                         .requestMatchers("/api/control-partido/**").hasAnyAuthority("ORGANIZADOR", "ROLE_ORGANIZADOR")
 
@@ -86,8 +89,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // ✨ NUEVO: Esto le dice a Spring Boot que use tu sistema de autenticación de usuarios
-    // y DEJE de generar la contraseña "Using generated security password" en la consola.
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
