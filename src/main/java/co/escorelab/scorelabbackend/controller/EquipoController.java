@@ -77,4 +77,16 @@ public class EquipoController {
         equipoService.cambiarEstado(id, "APROBADO");
         return ResponseEntity.ok(ApiResponse.ok("Equipo aprobado exitosamente", null));
     }
+
+    /**
+     * ❌ NUEVO MÉTODO: Rechazar equipo (Solo Organizador)
+     * PATCH /api/equipos/{id}/rechazar
+     */
+    @PatchMapping("/{id}/rechazar")
+    @PreAuthorize("hasAnyAuthority('ORGANIZADOR', 'ROLE_ORGANIZADOR')")
+    public ResponseEntity<ApiResponse<Void>> rechazarEquipo(@PathVariable Long id) {
+        // Reutilizamos tu método cambiarEstado enviando "RECHAZADO"
+        equipoService.cambiarEstado(id, "RECHAZADO");
+        return ResponseEntity.ok(ApiResponse.ok("Equipo rechazado exitosamente", null));
+    }
 }

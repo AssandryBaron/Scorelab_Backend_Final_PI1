@@ -59,12 +59,12 @@ public class TorneoService {
 
     private TorneoResponse convertirAResponse(Torneo torneo) {
         /**
-         * CAMBIO CLAVE:
-         * Cambiamos 'countByTorneoIdAndEstado' por 'countByTorneoId'.
-         * Esto permite que el organizador vea cuántos equipos se han postulado
-         * aunque todavía no los haya aprobado.
+         * 🎯 CORRECCIÓN DEL CONTADOR:
+         * Usamos 'countByTorneoIdAndEstadoIgnoreCase' filtrando únicamente por "APROBADO".
+         * Esto garantiza que los equipos RECHAZADOS o PENDIENTES no inflen el número
+         * de la tarjeta del torneo en el Dashboard.
          */
-        long contadorReal = equipoRepository.countByTorneoId(torneo.getId());
+        long contadorAprobados = equipoRepository.countByTorneoIdAndEstadoIgnoreCase(torneo.getId(), "APROBADO");
 
         return TorneoResponse.builder()
                 .id(torneo.getId())
@@ -74,7 +74,7 @@ public class TorneoService {
                 .fechaFin(torneo.getFechaFin())
                 .estado(torneo.getEstado())
                 .nombreOrganizador(torneo.getOrganizador().getNombre())
-                .cantidadEquipos((int) contadorReal)
+                .cantidadEquipos((int) contadorAprobados)
                 .build();
     }
 }

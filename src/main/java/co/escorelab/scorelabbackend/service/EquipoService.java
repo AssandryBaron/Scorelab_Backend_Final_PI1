@@ -25,16 +25,18 @@ public class EquipoService {
     private final TorneoRepository torneoRepository;
 
     /**
-     * 🌟 NUEVO MÉTODO: Listar equipos por Torneo
-     * Este método es el que llama el EquipoController para llenar los selects en el frontend.
+     * 🌟 MÉTODO CORREGIDO: Listar equipos por Torneo
+     * Ahora filtra estrictamente los equipos que están "APROBADOS" para que los
+     * PENDIENTES o RECHAZADOS no aparezcan en la gestión de partidos ni fixtures.
      */
     public List<EquipoResponse> listarEquiposPorTorneo(Long torneoId) {
         // Buscamos el torneo para asegurar que existe
         Torneo torneo = torneoRepository.findById(torneoId)
                 .orElseThrow(() -> new RuntimeException("Torneo no encontrado con ID: " + torneoId));
 
-        // Buscamos los equipos vinculados a ese torneo
+        // 🎯 FILTRADO CLAVE: Solo tomamos los equipos que tengan estado "APROBADO"
         return equipoRepository.findByTorneo(torneo).stream()
+                .filter(equipo -> "APROBADO".equalsIgnoreCase(equipo.getEstado()))
                 .map(this::convertirAResponse)
                 .collect(Collectors.toList());
     }
